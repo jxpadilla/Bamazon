@@ -35,11 +35,11 @@ connection.connect(function(err){
 	if (err) {
 		console.log(err);
 	}
-	console.log ("Connect wit ID: " + connection.threadId);
+	console.log ("Connect with ID: " + connection.threadId);
 
 });
 
-connection.query('SELECT * FROM bamazon.product GROUP BY DeptName', function(err, result){
+connection.query('SELECT ItemId, ProductName, DeptName, UnitPrice, StockQty FROM bamazon.product ORDER BY ItemId;', function(err, result){
    if (err) {
        console.log(err);
    }
