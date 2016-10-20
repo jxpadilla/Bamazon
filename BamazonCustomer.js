@@ -1,76 +1,132 @@
+var prompt = require("prompt");
+var inquirer = require("inquirer");
+var mysql = require("mysql");
 
-var prompt = require('prompt');
-var mysql = require('mysql');
-
-//
-// Start the prompt
-//
-prompt.start(); 
-
-//
-// Get two properties from the user: username and email
-//
-prompt.get(['Product', 'StockQty'], function (err, result) {
-  //
-  // Log the results.
-  //
-  console.log('         You have entered:');
-  console.log('            Product to Purchase: ' + result.product);
-  console.log('            Qty to Purchase: ' + result.StockQty);
-});
-
-
-
-
+var schema = {
+    properties: {
+        ItemID: {
+            description: "Select the Item Id below to make a purchase.",
+            pattern: /^\d+$/,
+            message: "Sorry-Enter an ID number.",
+            required: true
+        },
+        Qty: {
+            description: "How many do you want to buy?",
+            pattern: /^\d+$/,
+            message: "Sorry-You've entered an invalid quantity; please try again.",
+            required: true
+        }
+    }
+};
 
 var connection = mysql.createConnection({
-	host: 'localhost',
-	port: 3306,
-	user: 'root',
-	password: 'Zs$19064',
-	database: 'bamazon'
+    host: "localhost",
+    port: 3306,
+    user: "root",
+    password: "Zs$19064",
+    database: "bamazon"
 });
 
-connection.connect(function(err){
-	if (err) {
-		console.log(err);
-	}
-	console.log ("Connect with ID: " + connection.threadId);
-
+connection.connect(function(err) {
+    if (err) throw err;
 });
 
-connection.query('SELECT ItemId, ProductName, DeptName, UnitPrice, StockQty FROM bamazon.product ORDER BY ItemId;', function(err, result){
-   if (err) {
-       console.log(err);
-   }
-   else {
-       console.log(result);
-   }
+function calcInvPriceValue() {
+    var invValRdBikes = 0,
+        invValMtnBikes = 0,
+        invValSpecialty = 0;
+        // costMisc = 0,
+        // costOffice = 0,
+        // costElectronics = 0,
+        // costLeisure = 0;
+    var deptValue = [];
+    connection.query('SELECT * FROM product', function(err, res) {
+        if (err) throw err;
+        for (var i = 0; i < res.length; i++) {
+            if (res[i].DeptName == "Road Bikes") {
+                invValRdBikes += res[i].UnitPrice * res[i].StockQty;
+            } else if (res[i].DeptName == "Mountain Bikes") {
+                invValMtnBikes += res[i].UnitPrice * res[i].StockQty;
+            } else if (res[i].DeptName == "Specialty") {
+                invValSpecialty += res[i].UnitPrice * res[i].StockQty;
+            // } else if (res[i].DeptName == "Misc") {
+            //     costMisc += res[i].Price * res[i].StockQty;
+            // } else if (res[i].DeptName == "Office") {
+            //     costOffice += res[i].Price * res[i].StockQty;
+            // } else if (res[i].DeptName == "Electronics") {
+            //     costElectronics += res[i].Price * res[i].StockQty;
+            // } else if (res[i].DeptName == "Leisure") {
+            //     costLeisure += res[i].Price * res[i].StockQy;
+            }
+        }
+        deptValue.push(invValRdBikes);
+        deptValue.push(invValMtnBikes);
+        deptValue.push(invValSpecialty);
+        // deptCosts.push(costMisc);
+        // deptCosts.push(costOffice);
+        // deptCosts.push(costElectronics);
+        // deptCosts.push(costLeisure);
+    });
+    // connection.query("SELECT * FROM DeptName", function(err, result) {
+    //     for (var i = 0; i < result.length; i++) {
+    //         connection.query("Current Inventory Sales Valuation = " + deptValue[i].toFixed(2) + " WHERE ?", { DeptName: result[i].DeptName }, function(err, res) {
+    //             return;
+    //         });
+    //     }
+    // });
+}
 
-   // close the connection after the query
-   connection.end();
-});
+function welcomeDisplay() {
+    connection.query("SELECT * FROM product", function(err, result) {
+        if (err) throw err;
+        console.log("\n      Welcome to Bamazon Bicycles!  Check out these bargains!!");
+        console.log("=================================================================================");
+        for (var i = 0; i < result.length; i++) {
+            console.log("---------------------------------------------------------------------------------");
+            console.log("  Item ID: " + result[i].ItemId + "  || Product Name: " + result[i].ProductName + "  || Price: $" + result[i].UnitPrice.toFixed(2) + " || In Stock: " + result[i].StockQty);
+        }
+        console.log("\n");
+        userInput();
+    });
+}
 
-// connection.query('SELECT * FROM top5000 WHERE COUNT => 1', function(err, result){
-//    if (err) {
-//        console.log(err);
-//    }
-//    else {
-//        console.log(result);
-//    }
+function userInput() {
+    prompt.get(schema, function(err, result) {
+        connection.query("SELECT * FROM product WHERE ?", { ItemID: result.ItemID },
+            function(err, selectedItem) {
+                invAvail(selectedItem, result.Qty);
+            });
+    });
+}
 
-//    // close the connection after the query
-//    connection.end();
-// });
+function invAvail(item, purchaseQty) {
 
-// connection.query('SELECT COUNT (*) FROM top5000', function(err, result){
-//    if (err) {
-//        console.log(err);
-//    }
-//    else {
-//        console.log(result);
-//    }
+    if (item[0].StockQty < purchaseQty) {
+        console.log("\nWe don't have the selected quantity on hand. Please make another selection:");
+        setTimeout(welcomeDisplay, 1000);
+        setTimeout(userInput, 1500);
+    } else {
+        var deptName = item[0].DeptName;
+        var totalPurchase = purchaseQty * item[0].UnitPrice;
+        console.log("\n\nYour order quantity is: " + purchaseQty + " " + item[0].ProductName + " at $" + item[0].UnitPrice.toFixed(2) + " each.\n");
 
-//    // close the connection after the query
-//    connection.end();
-// });
+        // update the database quantity
+        connection.query("UPDATE product SET ? WHERE ?", [{ StockQty: item[0].StockQty - purchaseQty }, { ItemID: item[0].ItemID }], function(err, res) {});
+
+        // update the department table
+        // connection.query("SELECT * FROM DeptName", function(err, res) {
+        //     var itemDept = "";
+        //     for (var i = 0; i < res.length; i++) {
+        //         if (deptName == res[i].DeptName) {
+        //             itemDept = deptName;
+        //         }
+        //     }
+        //     connection.query("UPDATE DeptName SET TotalSales = TotalSales + " + totalPurchase + " WHERE ?", { DeptName: itemDept }, function(err, res) {
+        //         return;
+        //     });
+        // });
+        welcomeDisplay();
+    }
+}
+welcomeDisplay();
+calcInvPriceValue();
