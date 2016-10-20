@@ -35,10 +35,7 @@ function calcInvPriceValue() {
     var invValRdBikes = 0,
         invValMtnBikes = 0,
         invValSpecialty = 0;
-        // costMisc = 0,
-        // costOffice = 0,
-        // costElectronics = 0,
-        // costLeisure = 0;
+
     var deptValue = [];
     connection.query('SELECT * FROM product', function(err, res) {
         if (err) throw err;
@@ -49,23 +46,12 @@ function calcInvPriceValue() {
                 invValMtnBikes += res[i].UnitPrice * res[i].StockQty;
             } else if (res[i].DeptName == "Specialty") {
                 invValSpecialty += res[i].UnitPrice * res[i].StockQty;
-            // } else if (res[i].DeptName == "Misc") {
-            //     costMisc += res[i].Price * res[i].StockQty;
-            // } else if (res[i].DeptName == "Office") {
-            //     costOffice += res[i].Price * res[i].StockQty;
-            // } else if (res[i].DeptName == "Electronics") {
-            //     costElectronics += res[i].Price * res[i].StockQty;
-            // } else if (res[i].DeptName == "Leisure") {
-            //     costLeisure += res[i].Price * res[i].StockQy;
             }
         }
         deptValue.push(invValRdBikes);
         deptValue.push(invValMtnBikes);
         deptValue.push(invValSpecialty);
-        // deptCosts.push(costMisc);
-        // deptCosts.push(costOffice);
-        // deptCosts.push(costElectronics);
-        // deptCosts.push(costLeisure);
+
     });
     // connection.query("SELECT * FROM DeptName", function(err, result) {
     //     for (var i = 0; i < result.length; i++) {
