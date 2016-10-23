@@ -1,10 +1,12 @@
+
+
 var prompt = require("prompt");
 var inquirer = require("inquirer");
 var mysql = require("mysql");
 
 var schema = {
     properties: {
-        ItemID: {
+        ItemId: {
             description: "Select the Item Id below to make a purchase.",
             pattern: /^\d+$/,
             message: "Sorry-Enter an ID number.",
@@ -37,7 +39,7 @@ function calcInvPriceValue() {
         invValSpecialty = 0;
 
     var deptValue = [];
-    connection.query('SELECT * FROM product', function(err, res) {
+    connection.query("SELECT * FROM product", function(err, res) {
         if (err) throw err;
         for (var i = 0; i < res.length; i++) {
             if (res[i].DeptName == "Road Bikes") {
@@ -53,13 +55,15 @@ function calcInvPriceValue() {
         deptValue.push(invValSpecialty);
 
     });
-    // connection.query("SELECT * FROM DeptName", function(err, result) {
-    //     for (var i = 0; i < result.length; i++) {
-    //         connection.query("Current Inventory Sales Valuation = " + deptValue[i].toFixed(2) + " WHERE ?", { DeptName: result[i].DeptName }, function(err, res) {
-    //             return;
-    //         });
-    //     }
-    // });
+    connection.query("SELECT * FROM product", function(err, result) {
+        if (err) throw err;
+        for (var i = 0; i < result.length; i++) {
+          
+            connection.query("UPDATE product SET StockQty = " + deptValue[i] + " WHERE ?", { Department: result[i].DeptName }, function(err, res) {
+                return;
+            });
+        }
+    });
 }
 
 function welcomeDisplay() {
@@ -78,41 +82,47 @@ function welcomeDisplay() {
 
 function userInput() {
     prompt.get(schema, function(err, result) {
-        connection.query("SELECT * FROM product WHERE ?", { ItemID: result.ItemID },
+        connection.query("SELECT * FROM product WHERE ?", { id: result.productId },
             function(err, selectedItem) {
-                invAvail(selectedItem, result.Qty);
+            if (!err) {
+                invAvail(selectedItem[0], result.Qty);
+            }
             });
     });
-}
+    invAvail();
 
+}
+        // evaluate inventory availability by comparing desired qty to on-hand stock qty
 function invAvail(item, purchaseQty) {
 
     if (item[0].StockQty < purchaseQty) {
         console.log("\nWe don't have the selected quantity on hand. Please make another selection:");
-        setTimeout(welcomeDisplay, 1000);
-        setTimeout(userInput, 1500);
+        // setTimeout(welcomeDisplay, 1000);
+        // setTimeout(userInput, 1500);
     } else {
-        var deptName = item[0].DeptName;
-        var totalPurchase = purchaseQty * item[0].UnitPrice;
-        console.log("\n\nYour order quantity is: " + purchaseQty + " " + item[0].ProductName + " at $" + item[0].UnitPrice.toFixed(2) + " each.\n");
+        var deptName = item.DeptName;
+        var totalPurchase = purchaseQty * item.UnitPrice;
+        console.log("\n\nYour order quantity is: " + purchaseQty + " " + item.ProductName + " at $" + item.UnitPrice.toFixed(2) + " each.\n");
 
         // update the database quantity
-        connection.query("UPDATE product SET ? WHERE ?", [{ StockQty: item[0].StockQty - purchaseQty }, { ItemID: item[0].ItemID }], function(err, res) {});
+        connection.query("UPDATE product SET ? WHERE ?", [{ StockQty: item.StockQty - purchaseQty }, { ItemID: item.ItemID }], function(err, res) {});
 
         // update the department table
-        // connection.query("SELECT * FROM DeptName", function(err, res) {
-        //     var itemDept = "";
-        //     for (var i = 0; i < res.length; i++) {
-        //         if (deptName == res[i].DeptName) {
-        //             itemDept = deptName;
-        //         }
-        //     }
-        //     connection.query("UPDATE DeptName SET TotalSales = TotalSales + " + totalPurchase + " WHERE ?", { DeptName: itemDept }, function(err, res) {
-        //         return;
-        //     });
-        // });
+        connection.query("SELECT * FROM product", function(err, res) {
+            var itemDept = "";
+            for (var i = 0; i < res.length; i++) {
+                if (deptName == res[i].DeptName) {
+                    itemDept = deptName;
+                }
+            }
+            connection.query("UPDATE DeptName SET TotalSales = TotalSales + " + totalPurchase + " WHERE ?", { DeptName: itemDept }, function(err, res) {
+                return;
+            });
+        });
         welcomeDisplay();
     }
 }
-welcomeDisplay();
+
 calcInvPriceValue();
+welcomeDisplay();
+
